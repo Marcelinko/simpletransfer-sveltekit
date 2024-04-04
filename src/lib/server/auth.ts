@@ -12,10 +12,10 @@ export function extractBearerToken(request: Request) {
 	return bearerToken;
 }
 
-export function generateUploadToken(uploadId: string) {
-	return jwt.sign({ redisId: uploadId }, SECRET_JWT_SECRET, { expiresIn: '24h' });
+export function generateUploadToken(uploadKey: string) {
+	return jwt.sign({ uploadKey }, SECRET_JWT_SECRET, { expiresIn: '24h' });
 }
 
-export function verifyUploadToken(token: string) {
-	return jwt.verify(token, SECRET_JWT_SECRET);
+export function verifyUploadToken(uploadtoken: string) {
+	return jwt.verify(uploadtoken, SECRET_JWT_SECRET);
 }

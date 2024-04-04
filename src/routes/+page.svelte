@@ -14,6 +14,7 @@
 	import _ from 'lodash';
 
 	let upload;
+	let hovering = false;
 	//TODO: Move to types
 
 	export let data: PageData;
@@ -48,6 +49,11 @@
 
 	function handleDragEnter(e) {
 		preventDefaults(e);
+		hovering = true;
+	}
+	function handleDragLeave(e) {
+		preventDefaults(e);
+		hovering = false;
 	}
 
 	function formatBytes(bytes: number, decimals = 2) {
@@ -65,15 +71,23 @@
 			expires_in: 60 * 60
 		};
 		upload = new Upload(options);
-		upload.onProgress = (progress) => {
+		upload.onProgress((progress) => {
 			console.log(progress);
-		};
+		});
+		upload.onComplete((uploadId) => {
+			goto(`/transfer/${uploadId}`);
+		});
 		upload.initializeUpload();
+	}
+	let currentValue = 'upload';
+
+	function handleTabChange(value) {
+		currentValue = value;
 	}
 </script>
 
 <main class="flex items-center justify-center">
-	<Tabs.Root class="h-full w-full max-w-[550px]" value="upload">
+	<Tabs.Root class="h-full w-full max-w-[550px]" bind:value={currentValue}>
 		<Tabs.List class="grid w-full grid-cols-2">
 			<Tabs.Trigger value="upload">Upload</Tabs.Trigger>
 			<Tabs.Trigger value="download">Download</Tabs.Trigger>
@@ -84,10 +98,12 @@
 					{#if files.length === 0}
 						<div class="flex w-full items-center justify-center">
 							<label
+								style:border-color={hovering ? 'blue' : 'red'}
 								on:drop={handleDrop}
 								on:dragenter={handleDragEnter}
+								on:dragleave={handleDragLeave}
 								for="dropzone-file"
-								class="dark:hover:bg-bray-800 flex h-64 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 transition-all duration-300 ease-in-out hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-700 dark:hover:border-gray-500 dark:hover:bg-gray-600"
+								class="flex h-64 w-full cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed dark:border-gray-600 dark:bg-gray-700 dark:hover:border-gray-500 dark:hover:bg-gray-600"
 							>
 								<input
 									id="dropzone-file"

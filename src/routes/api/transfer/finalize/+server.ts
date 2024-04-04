@@ -16,6 +16,7 @@ export async function POST({ request }) {
 	const decoded = verifyUploadToken(uploadToken);
 
 	let redisFiles = await redis.get(decoded.redisId);
+
 	let filePromises = redisFiles.map((file) => {
 		if (file.multipart) {
 			return s3.send(
@@ -49,11 +50,6 @@ export async function POST({ request }) {
 			if (s3File.Parts.length !== redisFile.multipart.chunks.length) {
 				return error(400, `Number of parts mismatch`);
 			}
-			for (let j = 0; j < redisFile.multipart.chunks.length; j++) {
-				if (s3File.Parts[j].Size !== redisFile.multipart.chunks[j].size) {
-					return error(400, `Part size mismatch`);
-				}
-			}
 		} else {
 			if (s3File.ContentLength !== redisFile.size) {
 				return error(400, `File size mismatch`);
@@ -84,7 +80,7 @@ export async function POST({ request }) {
 	await Promise.all(multipartPromises);
 	//TODO: Delete from redis
 
-	const { data, error } = await supabase
+	const { data } = await supabase
 		.from('upload')
 		.insert({
 			title: 'Test',
@@ -103,5 +99,5 @@ export async function POST({ request }) {
 	);
 
 	//await redis.del(decoded.redisId);
-	return json({ success: true });
+	return json({ upload_id: data[0].id });
 }

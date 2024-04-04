@@ -2,6 +2,9 @@ import axios from 'axios';
 import _ from 'lodash';
 
 export default class Upload {
+	token: string | null;
+	onCompleteFn: () => void;
+	onErrorFn: () => void;
 	constructor(options) {
 		this.options = options;
 		//TODO: Add title, description, expires
@@ -98,7 +101,13 @@ export default class Upload {
 			.put(url.signed_put_url, part, {
 				signal: this.abortController.signal,
 				onUploadProgress: (progressEvent) => {
-					console.log(progressEvent.loaded);
+					this.progressCache[urlIndex] = progressEvent.loaded;
+					const uploadedBytes = _.sum(this.progressCache);
+					const percentage = Math.round((uploadedBytes / this.uploadSize) * 100);
+					this.onProgressFn({
+						percentage,
+						loaded: uploadedBytes
+					});
 				}
 			})
 			.then((response) => {
@@ -148,7 +157,7 @@ export default class Upload {
 		await axios
 			.post('/api/transfer/finalize', {}, { headers: { Authorization: `Bearer ${this.token}` } })
 			.then((response) => {
-				console.log('Upload complete');
+				this.onCompleteFn(response.data.upload_id);
 			})
 			.catch((e) => {
 				console.error(e);
