@@ -67,8 +67,10 @@
 
 	function initializeTransfer() {
 		const options = {
-			files,
-			expires_in: 60 * 60
+			title: 'Transfer',
+			description: 'Uploading files to the server...',
+			expires_in: 86400,
+			files
 		};
 		upload = new Upload(options);
 		upload.onProgress((progress) => {
@@ -76,6 +78,9 @@
 		});
 		upload.onComplete((uploadId) => {
 			goto(`/transfer/${uploadId}`);
+		});
+		upload.onError((error) => {
+			console.error(error);
 		});
 		upload.initializeUpload();
 	}

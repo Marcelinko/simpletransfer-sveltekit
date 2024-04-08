@@ -2,17 +2,30 @@ import axios from 'axios';
 import _ from 'lodash';
 
 export default class Upload {
-	token: string | null;
+	options: { files: File[]; expires_in: number };
+	uploadToken: string | null;
+	parts: any;
+	currentPart: number;
+	putUrls: any[];
+	maxParallelUploads: number;
+	activeUploads: number;
+	progressCache: any[];
+	abortController: AbortController;
+	uploadSize: number;
+	chunkSize: number;
+
+	onProgressFn: (progress: { percentage: number; loaded: number }) => void;
 	onCompleteFn: () => void;
 	onErrorFn: () => void;
-	constructor(options) {
+
+	constructor(options: { files: File[]; expires_in: number }) {
 		this.options = options;
 		//TODO: Add title, description, expires
-		this.token = null;
+		this.uploadToken = null;
 		this.parts = [];
 		this.currentPart = 0;
 		this.putUrls = [];
-		this.maxParallelUploads = 4;
+		this.maxParallelUploads = 5;
 		this.activeUploads = 0;
 		this.progressCache = [];
 		this.abortController = new AbortController();
@@ -27,16 +40,16 @@ export default class Upload {
 	async initializeUpload() {
 		await axios
 			.post('/api/transfer/initialize', {
+				expires_in: this.options.expires_in,
 				files: this.options.files.map((file) => ({
 					name: file.name,
 					size: file.size,
 					type: file.type
-				})),
-				expires_in: this.options.expires_in
+				}))
 			})
 			.then(async (response) => {
 				const { data } = response;
-				this.token = data.token;
+				this.uploadToken = data.upload_token;
 				this.parts = this.getFileParts(data.files);
 				await this.getUrlBatch();
 				await this.startUpload();
@@ -92,7 +105,7 @@ export default class Upload {
 	}
 
 	//TODO: Headers for Content-Length
-	async uploadPart(part, urlIndex) {
+	async uploadPart(part, partNumber) {
 		this.activeUploads++;
 		this.currentPart++;
 		const url = this.putUrls.shift();
@@ -101,7 +114,7 @@ export default class Upload {
 			.put(url.signed_put_url, part, {
 				signal: this.abortController.signal,
 				onUploadProgress: (progressEvent) => {
-					this.progressCache[urlIndex] = progressEvent.loaded;
+					this.progressCache[partNumber] = progressEvent.loaded;
 					const uploadedBytes = _.sum(this.progressCache);
 					const percentage = Math.round((uploadedBytes / this.uploadSize) * 100);
 					this.onProgressFn({
@@ -125,8 +138,8 @@ export default class Upload {
 					return {
 						size: chunk.size,
 						key: file.key,
-						partNumber: index + 1,
-						uploadId: file.multipart.upload_id
+						part_number: index + 1,
+						upload_id: file.multipart.upload_id
 					};
 				});
 			} else {
@@ -144,9 +157,13 @@ export default class Upload {
 		this.putUrls = [...this.putUrls, ...putUrls];
 	}
 
-	async getSignedUrls(files) {
+	async getSignedUrls(parts) {
 		return await axios
-			.post('/api/transfer/sign', { files }, { headers: { Authorization: `Bearer ${this.token}` } })
+			.post(
+				'/api/transfer/sign',
+				{ parts },
+				{ headers: { Authorization: `Bearer ${this.uploadToken}` } }
+			)
 			.then((response) => response.data)
 			.catch((e) => {
 				console.error(e);
@@ -155,7 +172,11 @@ export default class Upload {
 
 	async completeUpload() {
 		await axios
-			.post('/api/transfer/finalize', {}, { headers: { Authorization: `Bearer ${this.token}` } })
+			.post(
+				'/api/transfer/finalize',
+				{},
+				{ headers: { Authorization: `Bearer ${this.uploadToken}` } }
+			)
 			.then((response) => {
 				this.onCompleteFn(response.data.upload_id);
 			})

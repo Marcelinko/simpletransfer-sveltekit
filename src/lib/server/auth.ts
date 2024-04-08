@@ -17,5 +17,5 @@ export function generateUploadToken(uploadKey: string) {
 }
 
 export function verifyUploadToken(uploadtoken: string) {
-	return jwt.verify(uploadtoken, SECRET_JWT_SECRET);
+	return jwt.verify(uploadtoken, SECRET_JWT_SECRET) as { uploadKey: string };
 }

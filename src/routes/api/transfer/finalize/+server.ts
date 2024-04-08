@@ -2,22 +2,49 @@ import { error, json } from '@sveltejs/kit';
 import redis from '$lib/server/redis';
 import s3 from '$lib/server/s3';
 import supabase from '$lib/server/supabase';
+import _ from 'lodash';
 import {
 	HeadObjectCommand,
 	ListPartsCommand,
 	CompleteMultipartUploadCommand
 } from '@aws-sdk/client-s3';
+import type { HeadObjectCommandOutput, ListPartsCommandOutput } from '@aws-sdk/client-s3';
 import { extractBearerToken, verifyUploadToken } from '$lib/server/auth';
 
+type File = {
+	name: string;
+	size: number;
+	key: string;
+	type?: string;
+	multipart?: {
+		upload_id: string;
+		chunks: { size: number }[];
+	};
+};
+
+type RedisUpload = {
+	title?: string;
+	description?: string;
+	expires_in: number;
+	files: File[];
+};
+
 export async function POST({ request }) {
-	const uploadToken = extractBearerToken(request);
-	if (!uploadToken) return error(401, 'Unauthorized');
+	let decodedPayload: { uploadKey: string };
+	try {
+		const uploadToken = extractBearerToken(request);
+		if (!uploadToken) return error(401, 'No token provided');
+		decodedPayload = verifyUploadToken(uploadToken);
+	} catch (e) {
+		console.log(e);
+		return error(401, 'Unauthorized');
+	}
+	const redisUpload: RedisUpload | null = await redis.get(decodedPayload.uploadKey);
+	if (!redisUpload) {
+		return error(404, `Upload not found`);
+	}
 
-	const decoded = verifyUploadToken(uploadToken);
-
-	let redisFiles = await redis.get(decoded.redisId);
-
-	let filePromises = redisFiles.map((file) => {
+	const filePromises = redisUpload.files.map((file: File) => {
 		if (file.multipart) {
 			return s3.send(
 				new ListPartsCommand({
@@ -36,37 +63,37 @@ export async function POST({ request }) {
 		}
 	});
 
-	const s3Files = await Promise.all(filePromises).catch(() => {
-		return error(400, `Some files are missing`);
+	const s3Files: (ListPartsCommandOutput | HeadObjectCommandOutput)[] = await Promise.all(
+		filePromises
+	).catch(() => {
+		return error(404, `Some files were not found in bucket`);
 	});
 
-	for (let i = 0; i < redisFiles.length; i++) {
-		const redisFile = redisFiles[i];
-		const s3File = s3Files[i];
-		if (!redisFile || !s3File) {
-			return error(400, `Some files are missing`);
-		}
-		if (redisFile.multipart) {
-			if (s3File.Parts.length !== redisFile.multipart.chunks.length) {
+	redisUpload.files.forEach((file: File, index: number) => {
+		const s3File = s3Files[index];
+		if (file.multipart && 'Parts' in s3File) {
+			const s3ListPartsFile = s3File as ListPartsCommandOutput;
+			if (s3ListPartsFile.Parts?.length !== file.multipart.chunks.length) {
 				return error(400, `Number of parts mismatch`);
 			}
 		} else {
-			if (s3File.ContentLength !== redisFile.size) {
+			const s3HeadObjectFile = s3File as HeadObjectCommandOutput;
+			if (s3HeadObjectFile.ContentLength !== file.size) {
 				return error(400, `File size mismatch`);
 			}
 		}
-	}
+	});
 
 	const multipartPromises = s3Files
-		.filter((file) => file.Parts)
-		.map((file) => {
+		.filter((file) => 'Parts' in file && file.Parts)
+		.map((file: ListPartsCommandOutput) => {
 			return s3.send(
 				new CompleteMultipartUploadCommand({
 					Bucket: 'simpletransfer',
 					Key: file.Key,
 					UploadId: file.UploadId,
 					MultipartUpload: {
-						Parts: file.Parts.map((part) => {
+						Parts: file.Parts?.map((part) => {
 							return {
 								PartNumber: part.PartNumber,
 								ETag: part.ETag
@@ -77,20 +104,28 @@ export async function POST({ request }) {
 			);
 		});
 
-	await Promise.all(multipartPromises);
-	//TODO: Delete from redis
+	await Promise.all(multipartPromises).catch(() => {
+		return error(500, `Error completing multipart upload`);
+	});
 
-	const { data } = await supabase
+	const { data: uploadData, error: uploadError } = await supabase
 		.from('upload')
 		.insert({
-			title: 'Test',
-			description: 'Test description',
-			expires_in: new Date()
+			title: redisUpload.title,
+			description: redisUpload.description,
+			expires: new Date(Date.now() + redisUpload.expires_in * 1000),
+			upload_size: _.sumBy(redisUpload.files, 'size'),
+			file_count: redisUpload.files.length
 		})
 		.select();
-	await supabase.from('file').insert(
-		redisFiles.map((file) => ({
-			upload_id: data[0].id,
+
+	if (!uploadData || uploadError) {
+		return error(500, 'Error inserting upload');
+	}
+
+	const { error: fileError } = await supabase.from('file').insert(
+		redisUpload.files.map((file) => ({
+			upload_id: uploadData[0].id,
 			name: file.name,
 			type: file.type,
 			size: file.size,
@@ -98,6 +133,15 @@ export async function POST({ request }) {
 		}))
 	);
 
-	//await redis.del(decoded.redisId);
-	return json({ upload_id: data[0].id });
+	if (fileError) {
+		await supabase.from('upload').delete().eq('id', uploadData[0].id);
+		await supabase.rpc('update_statistics', {
+			upload_size: _.sumBy(redisUpload.files, 'size'),
+			file_count: redisUpload.files.length
+		});
+		return error(500, 'Error inserting files');
+	}
+
+	await redis.del(decodedPayload.uploadKey);
+	return json({ upload_id: uploadData[0].id });
 }

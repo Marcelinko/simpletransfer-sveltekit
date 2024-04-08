@@ -8,11 +8,14 @@ import s3 from '$lib/server/s3';
 import redis from '$lib/server/redis';
 import { generateUploadToken } from '$lib/server/auth';
 
-const fileSchema = z.object({
-	name: z.string().min(1, { message: 'One of the files is missing a name' }),
-	size: z.number().int().min(0),
-	type: z.string().min(1, { message: 'One of the files is missing a type' })
-});
+//TODO: In future limit each file to be 15GB max, because of 1000 parts limits (15MB * 1000 = 15GB)
+const fileSchema = z
+	.object({
+		name: z.string().min(1, { message: 'One of the files is missing a name' }),
+		size: z.number().int().min(0),
+		type: z.string().optional()
+	})
+	.strict();
 
 const filesSchema = z
 	.array(fileSchema)
@@ -22,17 +25,20 @@ const filesSchema = z
 		message: 'Transfer size exceeds 1GB limit'
 	});
 
-const schema = z.object({
-	title: z.string().max(50, { message: 'Title too long' }).optional(),
-	description: z.string().max(1000, { message: 'Description too long' }).optional(),
-	expires_in: z.literal(86400),
-	files: filesSchema
-});
+const schema = z
+	.object({
+		title: z.string().max(50, { message: 'Title too long' }).optional(),
+		description: z.string().max(1000, { message: 'Description too long' }).optional(),
+		expires_in: z.literal(86400),
+		files: filesSchema
+	})
+	.strict();
 
 type File = {
 	name: string;
 	size: number;
 	key: string;
+	type?: string;
 	multipart?: {
 		promise?: Promise<CreateMultipartUploadCommandOutput>;
 		upload_id?: string;
@@ -67,7 +73,8 @@ export async function POST({ request }) {
 
 			const command = new CreateMultipartUploadCommand({
 				Bucket: 'simpletransfer',
-				Key: file.key
+				Key: file.key,
+				ContentType: file.type
 			});
 
 			const multipartPromise = s3.send(command);
@@ -96,11 +103,11 @@ export async function POST({ request }) {
 		return error(500, 'Failed to create multipart upload');
 	}
 
-	const redisKey = uuidv4();
-	await redis.set(redisKey, JSON.stringify({ title, description, expires_in, files }), {
-		ex: 86400
+	const uploadKey = uuidv4();
+	await redis.set(uploadKey, JSON.stringify({ title, description, expires_in, files }), {
+		ex: expires_in
 	});
-	const uploadToken = generateUploadToken(redisKey);
+	const uploadToken = generateUploadToken(uploadKey);
 
 	return json({ title, description, expires_in, files, upload_token: uploadToken });
 }
