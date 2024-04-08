@@ -1,4 +1,4 @@
-import { SECRET_JWT_SECRET } from '$env/static/private';
+import { SECRET_JWT_SECRET } from '$env/dynamic/private';
 import jwt from 'jsonwebtoken';
 
 export function extractBearerToken(request: Request) {
