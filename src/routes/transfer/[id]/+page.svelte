@@ -3,7 +3,6 @@
 	import { downloadZip } from 'client-zip';
 	import streamSaver from 'streamsaver';
 	export let data: PageData;
-	streamSaver.mitm = 'https://simpletransfer.github.io/';
 
 	//TODO: https://github.com/whatwg/fs
 
