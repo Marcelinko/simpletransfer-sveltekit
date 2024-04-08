@@ -1,4 +1,4 @@
-import { SECRET_JWT_SECRET } from '$env/dynamic/private';
+import { env } from '$env/dynamic/private';
 import jwt from 'jsonwebtoken';
 
 export function extractBearerToken(request: Request) {
@@ -13,9 +13,9 @@ export function extractBearerToken(request: Request) {
 }
 
 export function generateUploadToken(uploadKey: string) {
-	return jwt.sign({ uploadKey }, SECRET_JWT_SECRET, { expiresIn: '24h' });
+	return jwt.sign({ uploadKey }, env.SECRET_JWT_SECRET, { expiresIn: '24h' });
 }
 
 export function verifyUploadToken(uploadtoken: string) {
-	return jwt.verify(uploadtoken, SECRET_JWT_SECRET) as { uploadKey: string };
+	return jwt.verify(uploadtoken, env.SECRET_JWT_SECRET) as { uploadKey: string };
 }
