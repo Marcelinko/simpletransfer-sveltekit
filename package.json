@@ -53,6 +53,7 @@
 		"jsonwebtoken": "^9.0.2",
 		"lodash": "^4.17.21",
 		"lucide-svelte": "^0.358.0",
+		"native-file-system-adapter": "^3.0.1",
 		"streamsaver": "^2.0.6",
 		"tailwind-merge": "^2.2.1",
 		"tailwind-variants": "^0.2.1",

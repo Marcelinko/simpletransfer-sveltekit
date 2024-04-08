@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { beforeNavigate } from '$app/navigation';
 	import type { PageData } from './$types';
 	import { downloadZip } from 'client-zip';
 	import streamSaver from 'streamsaver';
@@ -15,6 +16,7 @@
 		download_url: string;
 	};
 
+	//TODO: Get info if files are currently downloading, so we can handle on beforeUnload
 	async function downloadFile(file: File) {
 		const fileStream = streamSaver.createWriteStream(file.name, { size: file.size });
 		fetch(file.download_url).then((res) => {
@@ -47,6 +49,12 @@
 			})
 		);
 	}
+
+	beforeNavigate(({ from, to, cancel }) => {
+		if (!confirm('Leave without saving ?')) {
+			cancel();
+		}
+	});
 </script>
 
 <div class="flex flex-col">
