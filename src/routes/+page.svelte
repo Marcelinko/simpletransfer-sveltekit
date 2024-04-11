@@ -74,7 +74,7 @@
 		};
 		upload = new Upload(options);
 		upload.onProgress((progress) => {
-			console.log(progress);
+			//console.log(progress);
 		});
 		upload.onComplete((uploadId) => {
 			goto(`/transfer/${uploadId}`);

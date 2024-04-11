@@ -28,7 +28,7 @@ const partSchema = z
 const partsSchema = z
 	.array(partSchema)
 	.min(1, { message: 'No parts provided' })
-	.max(5, { message: 'Maximum 5 urls per request' });
+	.max(10, { message: 'Maximum 10 urls per request' });
 
 const schema = z.object({
 	parts: partsSchema
