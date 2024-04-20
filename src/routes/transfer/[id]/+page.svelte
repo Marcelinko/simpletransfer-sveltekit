@@ -104,15 +104,6 @@
 					</div>
 				{/each}
 			</ScrollArea>
-
-			<!-- {#each data.files as file}
-				<div class="flex justify-between space-x-4">
-					<p class="font-semibold">{file.name}</p>
-					<p>{file.type}</p>
-					<p>{file.size}</p>
-					<button on:click={() => downloadFile(file)}>Download</button>
-				</div>
-			{/each} -->
 		</Card.Content>
 		<Card.Footer class="flex justify-center">
 			{#if data.files.length > 1}
