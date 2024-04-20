@@ -115,7 +115,8 @@ export async function POST({ request }) {
 			description: redisUpload.description,
 			expires: new Date(Date.now() + redisUpload.expires_in * 1000),
 			upload_size: _.sumBy(redisUpload.files, 'size'),
-			file_count: redisUpload.files.length
+			file_count: redisUpload.files.length,
+			upload_key: decodedPayload.uploadKey
 		})
 		.select();
 

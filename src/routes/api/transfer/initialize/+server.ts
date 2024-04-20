@@ -3,10 +3,10 @@ import _ from 'lodash';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateMultipartUploadCommand } from '@aws-sdk/client-s3';
-import type { CreateMultipartUploadCommandOutput } from '@aws-sdk/client-s3';
 import s3 from '$lib/server/s3';
 import redis from '$lib/server/redis';
 import { generateUploadToken } from '$lib/server/auth';
+import { env } from '$env/dynamic/public';
 
 //TODO: In future limit each file to be 15GB max, because of 1000 parts limits (15MB * 1000 = 15GB)
 const fileSchema = z
@@ -40,11 +40,12 @@ type File = {
 	key: string;
 	type?: string;
 	multipart?: {
-		promise?: Promise<CreateMultipartUploadCommandOutput>;
-		upload_id?: string;
 		chunks: { size: number }[];
+		upload_id?: string;
 	};
 };
+
+const chunkSize = Number(env.PUBLIC_CHUNK_SIZE);
 
 export async function POST({ request }) {
 	const data = await request.json();
@@ -56,30 +57,23 @@ export async function POST({ request }) {
 
 	const { title, description, expires_in } = data;
 	let { files } = data;
+	const uploadKey = uuidv4();
 
 	files = files.map((file: File) => {
-		file.key = uuidv4();
-		if (file.size > 15728640) {
+		file.key = `1d/${uploadKey}/${file.name}`;
+		if (file.size > chunkSize) {
 			const chunks = [];
-			const numChunks = Math.ceil(file.size / 15728640);
+			const numChunks = Math.ceil(file.size / chunkSize);
 			const fileSize = file.size;
 
 			for (let i = 0; i < numChunks; i++) {
-				const start = i * 15728640;
-				const end = Math.min(start + 15728640, fileSize);
-				const chunkSize = end - start;
-				chunks.push({ size: chunkSize });
+				const start = i * chunkSize;
+				const end = Math.min(start + chunkSize, fileSize);
+				const actualChunkSize = end - start;
+				chunks.push({ size: actualChunkSize });
 			}
 
-			const command = new CreateMultipartUploadCommand({
-				Bucket: 'simpletransfer',
-				Key: file.key,
-				ContentType: file.type
-			});
-
-			const multipartPromise = s3.send(command);
 			file.multipart = {
-				promise: multipartPromise,
 				chunks
 			};
 		}
@@ -87,27 +81,44 @@ export async function POST({ request }) {
 	});
 
 	const filesWithMultipart = files.filter((file: File) => file.multipart);
+
+	const commands = filesWithMultipart.map((file: File) => {
+		return new CreateMultipartUploadCommand({
+			Bucket: 'simpletransfer',
+			Key: `1d/${uploadKey}/${file.name}`
+		});
+	});
+
+	const uploadPromises = commands.map((command: CreateMultipartUploadCommand) => s3.send(command));
+
 	try {
-		const multiparts = await Promise.all(
-			filesWithMultipart.map((file: File) => file.multipart?.promise)
-		);
-		files.map((file: File) => {
-			if (file.multipart) {
-				delete file.multipart.promise;
-				file.multipart.upload_id = multiparts.shift()?.UploadId;
-			}
-			return file;
+		const uploadResults = await Promise.all(uploadPromises);
+		uploadResults.forEach((result, index) => {
+			filesWithMultipart[index].multipart.upload_id = result.UploadId;
 		});
 	} catch (e) {
-		console.error(e);
 		return error(500, 'Failed to create multipart upload');
 	}
 
-	const uploadKey = uuidv4();
 	await redis.set(uploadKey, JSON.stringify({ title, description, expires_in, files }), {
 		ex: expires_in
 	});
+
+	const parts = files.flatMap((file: File) => {
+		if (file.multipart) {
+			const { chunks, upload_id } = file.multipart;
+			return chunks.map((chunk, index) => ({
+				size: chunk.size,
+				key: file.key,
+				part_number: index + 1,
+				upload_id
+			}));
+		} else {
+			return { size: file.size, key: file.key };
+		}
+	});
+
 	const uploadToken = generateUploadToken(uploadKey);
 
-	return json({ title, description, expires_in, files, upload_token: uploadToken });
+	return json({ title, description, expires_in, parts, upload_token: uploadToken });
 }

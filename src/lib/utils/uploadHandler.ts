@@ -1,38 +1,59 @@
 import axios from 'axios';
 import _ from 'lodash';
+import { env } from '$env/dynamic/public';
+
+type Options = {
+	files: File[];
+	title: string;
+	description: string;
+	expires_in: number;
+};
+
+type Part = {
+	size: number;
+	key: string;
+	type?: string;
+	part_number?: number;
+	upload_id?: string;
+};
+
+type PreppedFile = File | Blob;
+type ProgressCallback = (progress: { percentage: number; loaded: number }) => void;
+type CompleteCallback = (upload_id: string) => void;
+type ErrorCallback = () => void;
 
 export default class Upload {
-	options: { files: File[]; expires_in: number };
-	uploadToken: string | null;
-	parts: any;
-	currentPart: number;
-	putUrls: any[];
-	maxParallelUploads: number;
-	activeUploads: number;
-	progressCache: any[];
-	abortController: AbortController;
-	uploadSize: number;
-	chunkSize: number;
-	slicedFiles: any[];
-	isGeneratingUrls: boolean;
+	options: Options; //Input files, title, description, expires_in
+	uploadToken: string | null; //JWT holding uploadId
+	uploadParts: Part[]; //File parts for getting presigned urls
+	currentUploadPart: number; //Current part that needs to be uploaded
+	uploadUrls: { signed_put_url: string }[]; //Presigned urls for uploading each part
+	preppedFiles: PreppedFile[]; //Input files sliced to match parts
+	maxParallelUploads: number; //Maximum number of parallel uploads
+	activeUploads: number; //Number of PUT requests uploading parts
+	uploadProgressCache: number[]; //Array of uploaded bytes for each part for tracking progress
+	abortController: AbortController; //Controller for aborting upload
+	uploadSize: number; //Sum of files
+	chunkSize: number; //Size of each chunk
+	isGeneratingUrls: boolean; //To check if we are already getting new batch
 
-	onProgressFn: (progress: { percentage: number; loaded: number }) => void;
-	onCompleteFn: () => void;
-	onErrorFn: () => void;
+	onProgressFn: ProgressCallback; //Track progress in .svelte page
+	onCompleteFn: CompleteCallback; //Get upload_id in .svelte page after all parts are uploaded
+	onErrorFn: ErrorCallback; //Get error in .svelte page if something fails
 
-	constructor(options: { files: File[]; expires_in: number }) {
+	constructor(options: Options) {
 		this.options = options;
+		this.abortController = new AbortController();
 		this.uploadToken = null;
-		this.parts = [];
-		this.slicedFiles = this.sliceFiles();
-		this.putUrls = [];
-		this.currentPart = 0;
+		this.uploadParts = [];
+		this.preppedFiles = [];
+		this.uploadUrls = [];
+		this.currentUploadPart = 0;
 		this.maxParallelUploads = 5;
 		this.activeUploads = 0;
-		this.progressCache = [];
-		this.abortController = new AbortController();
+		this.uploadProgressCache = [];
 		this.uploadSize = _.sumBy(this.options.files, 'size');
-		this.chunkSize = 1024 * 1024 * 15;
+		this.chunkSize = Number(env.PUBLIC_CHUNK_SIZE);
 		this.isGeneratingUrls = false;
 
 		this.onProgressFn = () => {};
@@ -40,7 +61,6 @@ export default class Upload {
 		this.onErrorFn = () => {};
 	}
 
-	//Get all the keys and multiparts
 	async initializeUpload() {
 		const res = await fetch('/api/transfer/initialize', {
 			method: 'POST',
@@ -55,52 +75,56 @@ export default class Upload {
 				}))
 			})
 		});
+		if (!res.ok) {
+			this.onErrorFn();
+			return;
+		}
 		const data = await res.json();
 		this.uploadToken = data.upload_token;
-		this.parts = this.getFileParts(data.files);
-		console.table(this.parts);
-		console.table(this.slicedFiles);
+		this.uploadParts = data.parts;
+		this.preppedFiles = this.getPreppedFiles();
 		await this.startUpload();
 	}
 
-	//Start upload by getting first batch of "10" presigned urls and process first part
 	async startUpload() {
 		await this.getUrlBatch();
+		this.isGeneratingUrls = false;
 		this.nextPart();
 	}
 
-	//Process part
 	async nextPart() {
-		//Check for limit of concurrent PUT requests
 		if (this.activeUploads >= this.maxParallelUploads) {
 			return;
 		}
-		if (this.putUrls.length <= 5 && this.parts.length !== 0 && !this.isGeneratingUrls) {
-			//If all the parts were somehow uploaded before we get new batch, run nextPart again
-			await this.getUrlBatch().then(() => this.nextPart());
+		if (this.uploadUrls.length <= 5 && this.uploadParts.length > 0 && !this.isGeneratingUrls) {
+			await this.getUrlBatch();
+			this.isGeneratingUrls = false;
+			this.nextPart();
 		}
-		const part = this.slicedFiles[this.currentPart];
+		const part = this.preppedFiles[this.currentUploadPart];
 		if (!part) {
 			if (!this.activeUploads) {
 				await this.completeUpload();
-				//this.onCompleteFn();
 			}
 			return;
 		}
-		this.uploadPart(part, this.currentPart);
+		const uploadUrl = this.uploadUrls.shift();
+		if (!uploadUrl) {
+			return;
+		}
+		this.uploadPart(uploadUrl, part, this.currentUploadPart);
 	}
 
-	async uploadPart(part, partNumber) {
-		this.currentPart++;
+	async uploadPart(url: { signed_put_url: string }, part: PreppedFile, partIndex: number) {
+		this.currentUploadPart++;
 		this.activeUploads++;
-		const url = this.putUrls.shift();
 		this.nextPart();
 		await axios
 			.put(url.signed_put_url, part, {
 				signal: this.abortController.signal,
 				onUploadProgress: (progressEvent) => {
-					this.progressCache[partNumber] = progressEvent.loaded;
-					const uploadedBytes = _.sum(this.progressCache);
+					this.uploadProgressCache[partIndex] = progressEvent.loaded;
+					const uploadedBytes = _.sum(this.uploadProgressCache);
 					const percentage = Math.round((uploadedBytes / this.uploadSize) * 100);
 					this.onProgressFn({
 						percentage,
@@ -113,19 +137,20 @@ export default class Upload {
 				this.nextPart();
 			})
 			.catch((e) => {
+				this.onErrorFn();
 				console.error(e);
 			});
 	}
 
 	async getUrlBatch() {
 		this.isGeneratingUrls = true;
-		const slicedParts = this.parts.splice(0, 10);
+		const slicedParts = this.uploadParts.splice(0, 10);
 		if (!slicedParts) return;
-		const putUrls = await this.getSignedUrls(slicedParts);
-		this.putUrls.push(...putUrls);
+		const uploadUrls = await this.getSignedUrls(slicedParts);
+		this.uploadUrls.push(...uploadUrls);
 	}
 
-	async getSignedUrls(parts) {
+	async getSignedUrls(parts: Part[]) {
 		const res = await fetch('/api/transfer/sign', {
 			method: 'POST',
 			headers: {
@@ -135,8 +160,11 @@ export default class Upload {
 				parts
 			})
 		});
-		const uploadUrls = await res.json();
-		return uploadUrls;
+		if (!res.ok) {
+			this.onErrorFn();
+			return;
+		}
+		return await res.json();
 	}
 
 	async completeUpload() {
@@ -146,11 +174,14 @@ export default class Upload {
 				Authorization: `Bearer ${this.uploadToken}`
 			}
 		});
+		if (!res.ok) {
+			this.onErrorFn();
+			return;
+		}
 		const data = await res.json();
 		this.onCompleteFn(data.upload_id);
 	}
 
-	//TODO: also abort if error occurs
 	async abortUpload() {
 		this.abortController.abort();
 		await fetch('/api/transfer/abort', {
@@ -161,72 +192,32 @@ export default class Upload {
 		});
 	}
 
-	getFileParts(files) {
-		return files.flatMap((file) => {
-			if (file.multipart) {
-				return file.multipart.chunks.map((chunk, index) => {
-					return {
-						size: chunk.size,
-						key: file.key,
-						part_number: index + 1,
-						upload_id: file.multipart.upload_id
-					};
-				});
-			} else {
-				return {
-					size: file.size,
-					key: file.key
-				};
-			}
-		});
-	}
-
-	sliceFiles() {
-		let slicedFiles = [];
+	getPreppedFiles() {
+		const preppedFiles = [];
 		for (let i = 0; i < this.options.files.length; i++) {
-			if (this.options.files[i].size > this.chunkSize) {
-				for (let j = 0; j < Math.ceil(this.options.files[i].size / this.chunkSize); j++) {
-					slicedFiles.push(
-						this.options.files[i].slice(j * this.chunkSize, (j + 1) * this.chunkSize)
-					);
+			const file = this.options.files[i];
+			if (file.size > this.chunkSize) {
+				for (let j = 0; j < Math.ceil(file.size / this.chunkSize); j++) {
+					preppedFiles.push(file.slice(j * this.chunkSize, (j + 1) * this.chunkSize));
 				}
 			} else {
-				slicedFiles.push(this.options.files[i]);
+				preppedFiles.push(file);
 			}
 		}
-		return slicedFiles;
+		return preppedFiles;
 	}
-	// getPart() {
-	// 	for (let i = 0, parts = 0; i < this.options.files.length; i++) {
-	// 		if (this.options.files[i].size > this.chunkSize) {
-	// 			for (let j = 0; j < Math.ceil(this.options.files[i].size / this.chunkSize); j++) {
-	// 				if (parts + j === this.currentPart) {
-	// 					this.currentPart++;
-	// 					return this.options.files[i].slice(j * this.chunkSize, (j + 1) * this.chunkSize);
-	// 				}
-	// 			}
-	// 			parts += Math.ceil(this.options.files[i].size / this.chunkSize);
-	// 		} else {
-	// 			if (parts === this.currentPart) {
-	// 				this.currentPart++;
-	// 				return this.options.files[i];
-	// 			}
-	// 			parts++;
-	// 		}
-	// 	}
-	// }
 
-	onProgress(onProgress) {
+	onProgress(onProgress: ProgressCallback) {
 		this.onProgressFn = onProgress;
 		return this;
 	}
 
-	onComplete(onComplete) {
+	onComplete(onComplete: CompleteCallback) {
 		this.onCompleteFn = onComplete;
 		return this;
 	}
 
-	onError(onError) {
+	onError(onError: ErrorCallback) {
 		this.onErrorFn = onError;
 		return this;
 	}
