@@ -13,12 +13,14 @@
 	}
 </script>
 
-<div class="relative w-full max-w-[200px] rounded-md text-center">
-	<span class="absolute -top-3 left-1/2 z-10 m-0 w-full -translate-x-1/2 p-0 text-sm font-bold">
+<div
+	class="flex h-full w-full max-w-[200px] flex-col items-center justify-between rounded-md md:order-1"
+>
+	<span>
 		{formatBytes(size)}/{formatBytes(Number(env.PUBLIC_MAX_UPLOAD_SIZE), 2, true)}
 	</span>
 	<Progress
-		indicatorColor={size < Number(env.PUBLIC_MAX_UPLOAD_SIZE) ? 'bg-green-600' : 'bg-red-600'}
+		indicatorColor={size < Number(env.PUBLIC_MAX_UPLOAD_SIZE) ? 'bg-[#C3F73A]' : 'bg-[#F8333C]'}
 		class="h-3"
 		value={size}
 		max={Number(env.PUBLIC_MAX_UPLOAD_SIZE)}

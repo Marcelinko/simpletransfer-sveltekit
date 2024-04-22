@@ -1,4 +1,4 @@
-<script lang="ts">
+<!-- <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -36,4 +36,4 @@
 		<Button variant="outline" on:click={gotoSelectFiles}>Back</Button>
 		<Button on:click={gotoUploadProgress}>Upload</Button>
 	</Card.Footer>
-</Card.Root>
+</Card.Root> -->

@@ -1,36 +1,34 @@
 <script lang="ts">
-	import { File } from 'lucide-svelte';
-	import { Button } from '$lib/components/ui/button/index.js';
-	export let addFiles;
+	export let addFiles: (newFiles: File[]) => void;
 	let hovering = false;
 
-	function handleFileSelection(e) {
+	function handleFileSelection(e: any) {
 		addFiles(e.target.files);
 	}
 
-	function onDrop(e) {
+	function onDrop(e: any) {
 		e.preventDefault();
 		addFiles(e.dataTransfer.files);
 	}
 
-	function onDragOver(e) {
+	function onDragOver(e: any) {
 		e.preventDefault();
 	}
 
-	function onDragEnter(e) {
+	function onDragEnter(e: any) {
 		e.preventDefault();
 		hovering = true;
 	}
 
-	function onDragLeave(e) {
+	function onDragLeave(e: any) {
 		e.preventDefault();
 		hovering = false;
 	}
 </script>
 
 <div
-	class="mt-3 h-full rounded-lg border-2 border-dashed transition-all {hovering
-		? 'border-green-400'
+	class="h-full rounded-lg transition-all md:border-2 md:border-dashed {hovering
+		? 'border-primary'
 		: 'border-secondary'}"
 >
 	<label
@@ -45,9 +43,8 @@
 			<div
 				class="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-4"
 			>
-				<File class="h-8 w-8" />
-				<div class="flex items-center">
-					<p>Drop your files or <span class="text-primary">click here</span></p>
+				<div class="flex items-center text-center">
+					<p>Drop your files</p>
 				</div>
 			</div>
 		</div>

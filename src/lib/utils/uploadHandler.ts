@@ -137,7 +137,9 @@ export default class Upload {
 				this.nextPart();
 			})
 			.catch((e) => {
-				this.onErrorFn();
+				if (e.code !== 'ERR_CANCELED') {
+					this.onErrorFn();
+				}
 				console.error(e);
 			});
 	}

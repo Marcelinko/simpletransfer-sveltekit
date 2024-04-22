@@ -5,7 +5,6 @@ import { GetObjectCommand } from '@aws-sdk/client-s3';
 import supabase from '$lib/server/supabase';
 import s3 from '$lib/server/s3';
 
-//TODO: Check if user is authorized to download files
 export const load: PageServerLoad = async ({ params }) => {
 	const { data: uploadData, error: uploadError } = await supabase
 		.from('upload')

@@ -1,18 +1,21 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
-	import { ScrollArea } from '$lib/components/ui/scroll-area/index.js';
-	import { beforeNavigate, goto } from '$app/navigation';
 	import type { PageData } from './$types';
 	import { downloadZip } from 'client-zip';
 	import streamSaver from 'streamsaver';
-	import { getAppState } from '$lib/state.svelte';
-	import { X, Download } from 'lucide-svelte';
+	import { Download, RotateCw, Eye } from 'lucide-svelte';
+	import { fade } from 'svelte/transition';
+	import ImagePreview from '../../ImagePreview.svelte';
+	import { env } from '$env/dynamic/public';
 	export let data: PageData;
-	const appState = getAppState();
 	streamSaver.mitm = 'https://simpletransfer.github.io/StreamSaver.js/mitm.html';
 
 	//TODO: https://github.com/whatwg/fs, https://wicg.github.io/file-system-access/
+
+	let files: File[] = data.files;
+	let zipDownloaded = false;
+	let imagePreview: any;
 
 	type File = {
 		name: string;
@@ -20,14 +23,8 @@
 		size: number;
 		key: string;
 		download_url: string;
+		downloaded?: boolean;
 	};
-
-	function gotoSelectFiles() {
-		appState.update((currentState) => {
-			return { ...currentState, window: 'selectFiles' };
-		});
-		goto('/');
-	}
 
 	function formatBytes(bytes: number, decimals = 2) {
 		if (!+bytes) return '0 Bytes';
@@ -38,7 +35,10 @@
 		return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
 	}
 
-	//TODO: Get info if files are currently downloading, so we can handle on beforeUnload
+	function isImage(file: File) {
+		return file.type.startsWith('image/');
+	}
+
 	async function downloadFile(file: File) {
 		const fileStream = streamSaver.createWriteStream(file.name, { size: file.size });
 		fetch(file.download_url).then((res) => {
@@ -49,68 +49,113 @@
 			const writer = fileStream.getWriter();
 			const reader = res.body!.getReader();
 			const pump = () =>
-				reader.read().then((res): void | Promise<void> =>
-					//TODO: Check if file was downloaded
-					res.done ? writer.close() : writer.write(res.value).then(pump)
-				);
+				reader
+					.read()
+					.then((res): void | Promise<void> =>
+						res.done ? writer.close() : writer.write(res.value).then(pump)
+					);
 			pump();
 		});
+		const index = files.findIndex((f) => f === file);
+		files[index].downloaded = true;
 	}
 
 	async function downloadAllZip() {
-		const files = data.files.map(async (file) => {
+		const preppedFiles: any = files.map(async (file: File) => {
 			return {
 				name: file.name,
 				input: await fetch(file.download_url)
 			};
 		});
-		downloadZip(files)
-			.body!.pipeTo(
-				streamSaver.createWriteStream(`transfer${data.upload.id}.zip`, {
-					size: data.upload.upload_size
-				})
-			)
-			//TODO: Warning if file is still downloading, also add onUnmount
-			.then(() => console.log('Finished downloading zip'));
+		downloadZip(preppedFiles).body!.pipeTo(
+			streamSaver.createWriteStream(`transfer${data.upload.id}.zip`, {
+				size: data.upload.upload_size
+			})
+		);
+		zipDownloaded = true;
 	}
-
-	// beforeNavigate(({ from, to, cancel }) => {
-	// 	if (!confirm('Leave without saving ?')) {
-	// 		cancel();
-	// 	}
-	// });
 </script>
 
+<svelte:head>
+	<title>Transfer: {data.upload.id}</title>
+	<meta
+		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers. Get started now!"
+		name="description"
+	/>
+	<meta content="Effortless File Uploads & Instant Shareable URLs" property="og:title" />
+	<meta
+		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers. Get started now!"
+		property="og:description"
+	/>
+	<meta content={env.PUBLIC_BASE_URL} property="og:url" />
+	<meta content="Effortless File Uploads & Instant Shareable URLs" property="twitter:title" />
+	<meta
+		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers. Get started now!"
+		property="twitter:description"
+	/>
+	<meta content="#000" name="theme-color" />
+</svelte:head>
+
 <main class="flex h-dvh items-center justify-center">
-	<Card.Root class="flex h-full max-h-[500px] w-full max-w-[700px] flex-col">
-		<Card.Header class="flex items-end">
-			<Card.Title>
-				<Button variant="outline" size="icon" on:click={gotoSelectFiles}>
-					<X class="h-4 w-4" />
-				</Button>
-			</Card.Title>
-		</Card.Header>
-		<Card.Content class="h-full overflow-hidden">
-			<ScrollArea class="h-full">
-				{#each data.files as file}
-					<div class="m-2 mr-4 flex items-center justify-between gap-2 rounded-md bg-secondary p-2">
-						<div>
-							<p>{file.name}</p>
-							<p>{formatBytes(file.size)}</p>
+	<ImagePreview bind:this={imagePreview} />
+	<div in:fade={{ duration: 300 }} class="absolute h-full w-full max-w-[700px] md:max-h-[500px]">
+		<Card.Root class="flex h-full flex-col">
+			<Card.Content class="h-full overflow-x-hidden p-0 md:p-2">
+				<div class="px-2">
+					{#each files as file}
+						<div
+							class="my-2 flex w-full items-center justify-between rounded-md border border-secondary px-4 py-2"
+						>
+							<div class="overflow-hidden">
+								<p class="truncate font-semibold">
+									{file.name}
+								</p>
+								<p class="truncate">{formatBytes(file.size)}</p>
+							</div>
+							<div class="flex">
+								{#if isImage(file)}
+									<Button
+										on:click={() => imagePreview.loadImage(file.name, file.download_url)}
+										class="h-8 w-8 p-1"
+										size="icon"
+										variant="ghost"
+									>
+										<Eye class="h-4 w-4" />
+									</Button>
+								{/if}
+								<Button
+									on:click={() => downloadFile(file)}
+									class="h-8 w-8 p-1"
+									size="icon"
+									variant="ghost"
+								>
+									{#if file.downloaded}
+										<div in:fade={{ duration: 100 }}>
+											<RotateCw class="animate-spin-once h-4 w-4" />
+										</div>
+									{:else}
+										<Download class="h-4 w-4" />
+									{/if}
+								</Button>
+							</div>
 						</div>
-						<Button variant="outline" size="icon" on:click={() => downloadFile(file)}>
-							<Download class="h-4 w-4" />
-						</Button>
-					</div>
-				{/each}
-			</ScrollArea>
-		</Card.Content>
-		<Card.Footer class="flex justify-center">
-			{#if data.files.length > 1}
-				<Button on:click={downloadAllZip}>Download all</Button>
-			{:else}
-				<Button on:click={() => downloadFile(data.files[0])}>Download</Button>
-			{/if}
-		</Card.Footer>
-	</Card.Root>
+					{/each}
+				</div>
+			</Card.Content>
+			<Card.Footer class="flex justify-center pt-2">
+				{#if data.files.length > 1}
+					<Button on:click={downloadAllZip}
+						>Download all
+						{#if zipDownloaded}
+							<div in:fade={{ duration: 100 }}>
+								<RotateCw class="animate-spin-once ml-2 h-4 w-4" />
+							</div>
+						{:else}
+							<Download class="ml-2 h-4 w-4" />
+						{/if}
+					</Button>
+				{/if}
+			</Card.Footer>
+		</Card.Root>
+	</div>
 </main>

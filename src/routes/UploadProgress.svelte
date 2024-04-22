@@ -6,21 +6,15 @@
 	import { getAppState } from '$lib/state.svelte';
 	import CircularProgress from './CircularProgress.svelte';
 
-	export let files, uploadSettings;
+	export let files: File[];
 	const appState = getAppState();
-	let timeout;
-	let error;
-	let upload;
+	let timeout: ReturnType<typeof setTimeout>;
+	let error: string;
+	let upload: Upload;
 	let progress = 0;
 
 	function completeUpload(uploadId: string) {
 		appState.set({ window: 'transferSummary', uploadId });
-	}
-
-	function gotoUploadSettings() {
-		appState.update((currentState) => {
-			return { ...currentState, window: 'uploadSettings' };
-		});
 	}
 
 	function gotoSelectFiles() {
@@ -33,13 +27,13 @@
 		if (upload) {
 			upload.abortUpload();
 		}
-		gotoUploadSettings();
+		gotoSelectFiles();
 	}
 
 	function initializeTransfer() {
 		const options = {
-			title: uploadSettings.title,
-			description: uploadSettings.description,
+			title: '',
+			description: '',
 			expires_in: 86400,
 			files
 		};
@@ -54,8 +48,8 @@
 		upload.onError(() => {
 			error = 'Something went wrong';
 			timeout = setTimeout(() => {
-				gotoUploadSettings();
-			}, 1000);
+				gotoSelectFiles();
+			}, 1500);
 		});
 		upload.initializeUpload();
 	}
@@ -65,7 +59,12 @@
 			error = 'No files provided';
 			timeout = setTimeout(() => {
 				gotoSelectFiles();
-			}, 1000);
+			}, 1500);
+		} else if (files.length > 250) {
+			error = `Maximum 250 files per transfer`;
+			timeout = setTimeout(() => {
+				gotoSelectFiles();
+			}, 1500);
 		} else {
 			initializeTransfer();
 		}
@@ -85,6 +84,6 @@
 		{/if}
 	</Card.Content>
 	<Card.Footer class="flex justify-center">
-		<Button variant="ghost" on:click={cancelUpload}>Cancel</Button>
+		<Button class="font-bold uppercase" variant="ghost" on:click={cancelUpload}>Cancel</Button>
 	</Card.Footer>
 </Card.Root>

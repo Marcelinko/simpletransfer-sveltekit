@@ -5,6 +5,7 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { goto } from '$app/navigation';
 	import { Loader } from 'lucide-svelte';
+
 	let code = '';
 	let loading = false;
 
@@ -14,16 +15,15 @@
 	}
 </script>
 
-<Card.Root class="flex h-full flex-col">
-	<Card.Content class="h-full space-y-2">
+<Card.Root class="flex h-full flex-col items-center">
+	<Card.Content class="flex h-full max-w-[300px]  flex-col justify-center space-y-2">
 		<Label for="code">Enter your code</Label>
 		<Input bind:value={code} id="code" placeholder="Code..." />
 	</Card.Content>
 	<Card.Footer class="flex justify-center">
 		{#if loading}
 			<Button disabled>
-				<Loader class="mr-2 h-4 w-4 animate-spin" />
-				Loading</Button
+				Loading <Loader class="ml-2 h-4 w-4 animate-spin" /></Button
 			>
 		{:else}
 			<Button on:click={viewTransfer}>Download</Button>
