@@ -16,18 +16,18 @@
 <svelte:head>
 	<title>Effortless File Uploads & Instant Shareable URLs</title>
 	<meta
-		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers. Get started now!"
+		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers."
 		name="description"
 	/>
 	<meta content="Effortless File Uploads & Instant Shareable URLs" property="og:title" />
 	<meta
-		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers. Get started now!"
+		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers."
 		property="og:description"
 	/>
 	<meta content={env.PUBLIC_BASE_URL} property="og:url" />
 	<meta content="Effortless File Uploads & Instant Shareable URLs" property="twitter:title" />
 	<meta
-		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers. Get started now!"
+		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers."
 		property="twitter:description"
 	/>
 	<meta content="#000" name="theme-color" />

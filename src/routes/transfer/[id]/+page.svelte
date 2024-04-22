@@ -7,8 +7,11 @@
 	import { Download, RotateCw, Eye } from 'lucide-svelte';
 	import { fade } from 'svelte/transition';
 	import ImagePreview from '../../ImagePreview.svelte';
+	import { getAppState } from '$lib/state.svelte';
 	import { env } from '$env/dynamic/public';
+	import { goto } from '$app/navigation';
 	export let data: PageData;
+	const appState = getAppState();
 	streamSaver.mitm = 'https://simpletransfer.github.io/StreamSaver.js/mitm.html';
 
 	//TODO: https://github.com/whatwg/fs, https://wicg.github.io/file-system-access/
@@ -25,6 +28,13 @@
 		download_url: string;
 		downloaded?: boolean;
 	};
+
+	function newTransfer() {
+		appState.update((currentState) => {
+			return { ...currentState, window: 'selectFiles' };
+		});
+		goto('/');
+	}
 
 	function formatBytes(bytes: number, decimals = 2) {
 		if (!+bytes) return '0 Bytes';
@@ -78,22 +88,6 @@
 
 <svelte:head>
 	<title>Transfer: {data.upload.id}</title>
-	<meta
-		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers. Get started now!"
-		name="description"
-	/>
-	<meta content="Effortless File Uploads & Instant Shareable URLs" property="og:title" />
-	<meta
-		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers. Get started now!"
-		property="og:description"
-	/>
-	<meta content={env.PUBLIC_BASE_URL + 'transfer/' + data.upload.id} property="og:url" />
-	<meta content="Effortless File Uploads & Instant Shareable URLs" property="twitter:title" />
-	<meta
-		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers. Get started now!"
-		property="twitter:description"
-	/>
-	<meta content="#000" name="theme-color" />
 </svelte:head>
 
 <main class="flex h-dvh items-center justify-center">
@@ -142,7 +136,8 @@
 					{/each}
 				</div>
 			</Card.Content>
-			<Card.Footer class="flex justify-center pt-2">
+			<Card.Footer class="flex justify-between pt-2">
+				<Button class=" invisible" variant="outline">New transfer</Button>
 				{#if data.files.length > 1}
 					<Button on:click={downloadAllZip}
 						>Download all
@@ -155,6 +150,7 @@
 						{/if}
 					</Button>
 				{/if}
+				<Button on:click={newTransfer} variant="outline">New transfer</Button>
 			</Card.Footer>
 		</Card.Root>
 	</div>
