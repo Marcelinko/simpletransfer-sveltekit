@@ -20,11 +20,11 @@
 	}
 
 	function copyTransferUrl() {
-		navigator.clipboard.writeText(env.PUBLIC_BASE_URL + $appState.uploadId);
+		navigator.clipboard.writeText(env.PUBLIC_BASE_URL + 'transfer/' + $appState.uploadId);
 		toast.success('Url copied to clipboard');
 	}
 
-	QRCode.toDataURL(env.PUBLIC_BASE_URL + $appState.uploadId)
+	QRCode.toDataURL(env.PUBLIC_BASE_URL + 'transfer/' + $appState.uploadId)
 		.then((url) => {
 			QRImg = url;
 		})

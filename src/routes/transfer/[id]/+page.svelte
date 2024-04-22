@@ -87,7 +87,7 @@
 		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers. Get started now!"
 		property="og:description"
 	/>
-	<meta content={env.PUBLIC_BASE_URL} property="og:url" />
+	<meta content={env.PUBLIC_BASE_URL + 'transfer/' + data.upload.id} property="og:url" />
 	<meta content="Effortless File Uploads & Instant Shareable URLs" property="twitter:title" />
 	<meta
 		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers. Get started now!"

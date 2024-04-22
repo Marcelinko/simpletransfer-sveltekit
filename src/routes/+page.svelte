@@ -31,7 +31,7 @@
 		property="twitter:description"
 	/>
 	<meta content="#000" name="theme-color" />
-	<!-- <meta content="PMN-1aHSnHiQ8gNH2Rh88no2fFIUHac58kq85TRN9Hk" name="google-site-verification" /> -->
+	<meta name="google-site-verification" content="bmCqEtO6mqJAoUB0xnVsSoxcEeiYCnV9V0HnfQ9agLc" />
 </svelte:head>
 
 <main class="flex h-dvh items-center justify-center">
