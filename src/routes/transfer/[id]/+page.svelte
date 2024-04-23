@@ -8,7 +8,6 @@
 	import { fade } from 'svelte/transition';
 	import ImagePreview from '../../ImagePreview.svelte';
 	import { getAppState } from '$lib/state.svelte';
-	import { env } from '$env/dynamic/public';
 	import { goto } from '$app/navigation';
 	export let data: PageData;
 	const appState = getAppState();
@@ -85,10 +84,6 @@
 		zipDownloaded = true;
 	}
 </script>
-
-<svelte:head>
-	<title>Transfer: {data.upload.id}</title>
-</svelte:head>
 
 <main class="flex h-dvh items-center justify-center">
 	<ImagePreview bind:this={imagePreview} />

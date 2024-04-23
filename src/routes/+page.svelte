@@ -7,32 +7,10 @@
 	import TransferSummary from './TransferSummary.svelte';
 	import { getAppState } from '$lib/state.svelte';
 	import { fade } from 'svelte/transition';
-	import { env } from '$env/dynamic/public';
 	const appState = getAppState();
 
 	let files: File[] = [];
 </script>
-
-<svelte:head>
-	<title>Effortless File Uploads & Instant Shareable URLs</title>
-	<meta
-		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers."
-		name="description"
-	/>
-	<meta content="Effortless File Uploads & Instant Shareable URLs" property="og:title" />
-	<meta
-		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers."
-		property="og:description"
-	/>
-	<meta content={env.PUBLIC_BASE_URL} property="og:url" />
-	<meta content="Effortless File Uploads & Instant Shareable URLs" property="twitter:title" />
-	<meta
-		content="Easily send files hassle-free! Say goodbye to slow uploads and hello to speedy transfers."
-		property="twitter:description"
-	/>
-	<meta content="#000" name="theme-color" />
-	<meta name="google-site-verification" content="bmCqEtO6mqJAoUB0xnVsSoxcEeiYCnV9V0HnfQ9agLc" />
-</svelte:head>
 
 <main class="flex h-dvh items-center justify-center">
 	{#if $appState.window === 'selectFiles'}
