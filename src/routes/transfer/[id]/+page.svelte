@@ -2,19 +2,19 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import type { PageData } from './$types';
-	import { downloadZip } from 'client-zip';
-	import streamSaver from 'streamsaver';
 	import { Download, RotateCw, Eye } from 'lucide-svelte';
 	import { fade } from 'svelte/transition';
 	import ImagePreview from '../../ImagePreview.svelte';
 	import { getAppState } from '$lib/state.svelte';
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	export let data: PageData;
 	const appState = getAppState();
-	streamSaver.mitm = 'https://simpletransfer.github.io/StreamSaver.js/mitm.html';
 
 	//TODO: https://github.com/whatwg/fs, https://wicg.github.io/file-system-access/
 
+	let downloadZip: any;
+	let streamSaver: any;
 	let files: File[] = data.files;
 	let zipDownloaded = false;
 	let imagePreview: any;
@@ -27,6 +27,12 @@
 		download_url: string;
 		downloaded?: boolean;
 	};
+
+	onMount(async () => {
+		downloadZip = (await import('client-zip')).downloadZip;
+		streamSaver = await import('streamsaver');
+		streamSaver.mitm = 'https://simpletransfer.github.io/StreamSaver.js/mitm.html';
+	});
 
 	function newTransfer() {
 		appState.update((currentState) => {
