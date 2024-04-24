@@ -50,7 +50,7 @@
 
 <Dialog.Root {open} onOpenChange={() => closeScanner()}>
 	<Dialog.Content
-		class="flex h-full max-h-[400px] w-full max-w-[400px] flex-col items-center justify-center"
+		class="flex h-full w-full flex-col items-center justify-center md:max-h-[400px] md:max-w-[400px]"
 	>
 		{#if error}
 			<p>{error}</p>
