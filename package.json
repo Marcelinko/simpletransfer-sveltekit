@@ -57,6 +57,7 @@
 		"lucide-svelte": "^0.358.0",
 		"mode-watcher": "^0.3.0",
 		"native-file-system-adapter": "^3.0.1",
+		"posthog-js": "^1.129.0",
 		"qr-scanner": "^1.4.2",
 		"qrcode": "^1.5.3",
 		"streamsaver": "^2.0.6",
