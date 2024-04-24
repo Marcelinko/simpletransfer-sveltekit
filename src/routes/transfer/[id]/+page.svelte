@@ -110,7 +110,7 @@
 							<div class="flex">
 								{#if isImage(file)}
 									<Button
-										on:click={() => imagePreview.loadImage(file.name, file.download_url)}
+										on:click={() => imagePreview.openImage(file.name, file.download_url)}
 										class="h-8 w-8 p-1"
 										size="icon"
 										variant="ghost"

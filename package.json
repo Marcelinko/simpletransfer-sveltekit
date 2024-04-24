@@ -46,6 +46,7 @@
 		"@types/qrcode": "^1.5.5",
 		"@types/streamsaver": "^2.0.4",
 		"@upstash/redis": "^1.28.4",
+		"@zxing/library": "^0.20.0",
 		"axios": "^1.6.8",
 		"bits-ui": "^0.19.7",
 		"client-zip": "^2.3.0",
