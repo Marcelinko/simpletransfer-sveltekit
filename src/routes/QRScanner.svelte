@@ -55,7 +55,9 @@
 		{#if error}
 			<p>{error}</p>
 		{:else}
-			<video bind:this={videoElem} class=" h-full w-full"><track kind="captions" /> </video>
+			<video bind:this={videoElem} class="h-full w-full rotate-90"
+				><track kind="captions" />
+			</video>
 			<div bind:this={divElem} class=" absolute rounded-md"></div>
 		{/if}
 	</Dialog.Content>

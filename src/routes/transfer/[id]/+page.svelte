@@ -138,7 +138,7 @@
 				</div>
 			</Card.Content>
 			<Card.Footer class="flex justify-between pt-2">
-				<Button class=" invisible" variant="outline">New transfer</Button>
+				<Button class="hidden md:invisible md:block" variant="outline">New transfer</Button>
 				{#if data.files.length > 1}
 					<Button on:click={downloadAllZip}
 						>Download all
