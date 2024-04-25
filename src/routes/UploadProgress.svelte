@@ -6,6 +6,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import { getAppState } from '$lib/state.svelte';
 	import CircularProgress from './CircularProgress.svelte';
+	import { fade } from 'svelte/transition';
 
 	export let files: File[];
 	const appState = getAppState();
@@ -85,11 +86,13 @@
 		{#if error}
 			<p>{error}</p>
 		{:else if finalizing}
-			<div class="flex animate-pulse items-center gap-2">
-				<Loader class="h-6 w-6 animate-spin" />
-				<p>Finalizing</p>
+			<div class="flex flex-col items-center gap-2" in:fade={{ duration: 300 }}>
+				<div class="flex animate-pulse items-center gap-2">
+					<Loader class="h-6 w-6 animate-spin" />
+					<p>Finalizing</p>
+				</div>
+				<p class="animate-pulse text-center italic">If this takes too long, please try again</p>
 			</div>
-			<p class="animate-pulse text-center italic">If this takes too long, please try again</p>
 		{:else}
 			<CircularProgress {progress} />
 		{/if}
