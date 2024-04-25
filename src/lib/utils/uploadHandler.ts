@@ -19,6 +19,7 @@ type Part = {
 
 type PreppedFile = File | Blob;
 type ProgressCallback = (progress: { percentage: number; loaded: number }) => void;
+type FinalizingCallback = () => void;
 type CompleteCallback = (upload_id: string) => void;
 type ErrorCallback = () => void;
 
@@ -38,6 +39,7 @@ export default class Upload {
 	isGeneratingUrls: boolean; //To check if we are already getting new batch
 
 	onProgressFn: ProgressCallback; //Track progress in .svelte page
+	onFinalizingFn: FinalizingCallback;
 	onCompleteFn: CompleteCallback; //Get upload_id in .svelte page after all parts are uploaded
 	onErrorFn: ErrorCallback; //Get error in .svelte page if something fails
 
@@ -57,6 +59,7 @@ export default class Upload {
 		this.isGeneratingUrls = false;
 
 		this.onProgressFn = () => {};
+		this.onFinalizingFn = () => {};
 		this.onCompleteFn = () => {};
 		this.onErrorFn = () => {};
 	}
@@ -170,6 +173,7 @@ export default class Upload {
 	}
 
 	async completeUpload() {
+		this.onFinalizingFn();
 		const res = await fetch('/api/transfer/finalize', {
 			method: 'POST',
 			headers: {
@@ -211,6 +215,11 @@ export default class Upload {
 
 	onProgress(onProgress: ProgressCallback) {
 		this.onProgressFn = onProgress;
+		return this;
+	}
+
+	onFinalizing(onFinalizing: FinalizingCallback) {
+		this.onFinalizingFn = onFinalizing;
 		return this;
 	}
 

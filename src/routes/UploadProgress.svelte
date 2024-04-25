@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
+	import { Loader } from 'lucide-svelte';
 	import Upload from '$lib/utils/uploadHandler';
 	import { onDestroy, onMount } from 'svelte';
 	import { getAppState } from '$lib/state.svelte';
@@ -12,6 +13,7 @@
 	let error: string;
 	let upload: Upload;
 	let progress = 0;
+	let finalizing = false;
 
 	function completeUpload(uploadId: string) {
 		appState.set({ window: 'transferSummary', uploadId });
@@ -40,6 +42,9 @@
 		upload = new Upload(options);
 		upload.onProgress((newProgress) => {
 			progress = newProgress.percentage;
+		});
+		upload.onFinalizing(() => {
+			finalizing = true;
 		});
 		upload.onComplete((uploadId) => {
 			files = [];
@@ -79,6 +84,12 @@
 	<Card.Content class="flex h-full flex-col items-center justify-center space-y-2">
 		{#if error}
 			<p>{error}</p>
+		{:else if finalizing}
+			<div class="flex animate-pulse items-center gap-2">
+				<Loader class="h-6 w-6 animate-spin" />
+				<p>Finalizing</p>
+			</div>
+			<p class="animate-pulse text-center italic">If this takes too long, please try again</p>
 		{:else}
 			<CircularProgress {progress} />
 		{/if}
