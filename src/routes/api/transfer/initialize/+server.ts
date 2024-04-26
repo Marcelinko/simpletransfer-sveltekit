@@ -7,8 +7,8 @@ import s3 from '$lib/server/s3';
 import redis from '$lib/server/redis';
 import { generateUploadToken } from '$lib/server/auth';
 import { env } from '$env/dynamic/public';
+import bcrypt from 'bcrypt';
 
-//TODO: In future limit each file to be 15GB max, because of 1000 parts limits (15MB * 1000 = 15GB)
 const fileSchema = z
 	.object({
 		name: z.string().min(1, { message: 'One of the files is missing a name' }),
@@ -29,6 +29,7 @@ const schema = z
 	.object({
 		title: z.string().max(50, { message: 'Title too long' }).optional(),
 		description: z.string().max(1000, { message: 'Description too long' }).optional(),
+		password: z.string().max(1000, { message: 'Password too long' }).optional(),
 		expires_in: z.literal(86400),
 		files: filesSchema
 	})
@@ -55,7 +56,7 @@ export async function POST({ request }) {
 		return error(400, JSON.stringify(errors));
 	}
 
-	const { title, description, expires_in } = data;
+	const { title, description, password, expires_in } = data;
 	let { files } = data;
 	const uploadKey = uuidv4();
 
@@ -100,9 +101,22 @@ export async function POST({ request }) {
 		return error(500, 'Failed to create multipart upload');
 	}
 
-	await redis.set(uploadKey, JSON.stringify({ title, description, expires_in, files }), {
-		ex: expires_in
-	});
+	let hashedPassword: string | undefined;
+	if (password) {
+		try {
+			hashedPassword = await bcrypt.hash(password, 10);
+		} catch (err) {
+			return error(500, 'Failed to hash the password');
+		}
+	}
+
+	await redis.set(
+		uploadKey,
+		JSON.stringify({ title, description, password: hashedPassword, expires_in, files }),
+		{
+			ex: expires_in
+		}
+	);
 
 	const parts = files.flatMap((file: File) => {
 		if (file.multipart) {

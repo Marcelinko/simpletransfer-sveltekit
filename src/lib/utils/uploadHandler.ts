@@ -6,6 +6,7 @@ type Options = {
 	files: File[];
 	title: string;
 	description: string;
+	password: string;
 	expires_in: number;
 };
 
@@ -70,6 +71,7 @@ export default class Upload {
 			body: JSON.stringify({
 				title: this.options.title,
 				description: this.options.description,
+				password: this.options.password,
 				expires_in: this.options.expires_in,
 				files: this.options.files.map((file) => ({
 					name: file.name,

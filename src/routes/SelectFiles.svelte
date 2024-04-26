@@ -11,9 +11,9 @@
 	const appState = getAppState();
 	export let files: File[];
 
-	function gotoUploadProgress() {
+	function gotoUploadSettings() {
 		appState.update((currentState) => {
-			return { ...currentState, window: 'uploadProgress' };
+			return { ...currentState, window: 'uploadSettings' };
 		});
 	}
 
@@ -111,7 +111,7 @@
 			{#if files.length === 0 || _.sumBy(files, 'size') > Number(env.PUBLIC_MAX_UPLOAD_SIZE)}
 				<Button disabled>Next</Button>
 			{:else}
-				<Button on:click={gotoUploadProgress}>Next</Button>
+				<Button on:click={gotoUploadSettings}>Next</Button>
 			{/if}
 		</div>
 	</Card.Footer>

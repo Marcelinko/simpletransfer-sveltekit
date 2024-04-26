@@ -7,9 +7,11 @@
 	import TransferSummary from './TransferSummary.svelte';
 	import { getAppState } from '$lib/state.svelte';
 	import { fade } from 'svelte/transition';
+	import UploadSettings from './UploadSettings.svelte';
 	const appState = getAppState();
 
 	let files: File[] = [];
+	let password: string;
 </script>
 
 <main class="flex h-dvh items-center justify-center">
@@ -32,13 +34,21 @@
 				</Tabs.Content>
 			</Tabs.Root>
 		</div>
+	{:else if $appState.window === 'uploadSettings'}
+		<div
+			in:fade={{ duration: 300, delay: 300 }}
+			out:fade={{ duration: 300 }}
+			class="absolute h-full w-full max-w-[700px] md:max-h-[500px]"
+		>
+			<UploadSettings bind:password />
+		</div>
 	{:else if $appState.window === 'uploadProgress'}
 		<div
 			in:fade={{ duration: 300, delay: 300 }}
 			out:fade={{ duration: 300 }}
 			class="absolute h-full w-full max-w-[700px] md:max-h-[500px]"
 		>
-			<UploadProgress bind:files />
+			<UploadProgress bind:password bind:files />
 		</div>
 	{:else if $appState.window === 'transferSummary'}
 		<div

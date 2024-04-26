@@ -25,6 +25,7 @@ type File = {
 type RedisUpload = {
 	title?: string;
 	description?: string;
+	password?: string;
 	expires_in: number;
 	files: File[];
 };
@@ -113,6 +114,7 @@ export async function POST({ request }) {
 		.insert({
 			title: redisUpload.title,
 			description: redisUpload.description,
+			password: redisUpload.password,
 			expires: new Date(Date.now() + redisUpload.expires_in * 1000),
 			upload_size: _.sumBy(redisUpload.files, 'size'),
 			file_count: redisUpload.files.length,

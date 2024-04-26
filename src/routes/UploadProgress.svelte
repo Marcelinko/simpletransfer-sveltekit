@@ -9,6 +9,7 @@
 	import { fade } from 'svelte/transition';
 
 	export let files: File[];
+	export let password: string;
 	const appState = getAppState();
 	let timeout: ReturnType<typeof setTimeout>;
 	let error: string;
@@ -26,17 +27,24 @@
 		});
 	}
 
+	function gotoUploadSettings() {
+		appState.update((currentState) => {
+			return { ...currentState, window: 'uploadSettings' };
+		});
+	}
+
 	function cancelUpload() {
 		if (upload) {
 			upload.abortUpload();
 		}
-		gotoSelectFiles();
+		gotoUploadSettings();
 	}
 
 	function initializeTransfer() {
 		const options = {
 			title: '',
 			description: '',
+			password,
 			expires_in: 86400,
 			files
 		};
@@ -49,6 +57,7 @@
 		});
 		upload.onComplete((uploadId) => {
 			files = [];
+			password = '';
 			completeUpload(uploadId);
 		});
 		upload.onError(() => {

@@ -1,32 +1,42 @@
 import { error } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import supabase from '$lib/server/supabase';
 import s3 from '$lib/server/s3';
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load = async ({ params }) => {
 	const { data: uploadData, error: uploadError } = await supabase
 		.from('upload')
 		.select('*')
 		.eq('id', params.id);
 
-	const { data: fileData, error: fileError } = await supabase
-		.from('file')
-		.select('name, type, size, key')
-		.eq('upload_id', params.id);
-
-	if (uploadError || fileError) {
+	if (uploadError) {
 		error(500, 'Error fetching data from database');
 	}
 
-	if (uploadData.length === 0 || fileData.length === 0) {
+	if (uploadData.length === 0) {
 		error(404, 'Upload not found');
 	}
 
 	const uploadExpiry = new Date(uploadData[0].expires);
 	if (uploadExpiry.getTime() < Date.now()) {
 		error(404, 'Upload expired');
+	}
+
+	if (uploadData[0].password) {
+		return {
+			upload: uploadData[0],
+			protected: true
+		};
+	}
+
+	const { data: fileData, error: fileError } = await supabase
+		.from('file')
+		.select('name, type, size, key')
+		.eq('upload_id', params.id);
+
+	if (fileError) {
+		error(500, 'Error fetching data from database');
 	}
 
 	const downloadUrlPromises = fileData.map((file) => {
@@ -54,6 +64,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	return {
 		upload: uploadData[0],
-		files: filesWithDownloadUrls
+		files: filesWithDownloadUrls,
+		protected: false
 	};
 };
