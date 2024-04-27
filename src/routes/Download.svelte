@@ -17,7 +17,7 @@
 		goto(`/transfer/${code}`);
 	}
 
-	function test(e: CustomEvent<string>) {
+	function scan(e: CustomEvent<string>) {
 		const url = e.detail;
 		code = url.split('/').pop() || '';
 		if (code) {
@@ -27,7 +27,7 @@
 </script>
 
 <Card.Root class="flex h-full flex-col items-center">
-	<QRScanner on:scanResult={test} bind:this={scanner} />
+	<QRScanner on:scanResult={scan} bind:this={scanner} />
 	<Card.Content class="flex h-full max-w-[300px]  flex-col justify-center space-y-2">
 		<Label for="code">Enter your code</Label>
 		<div class="flex justify-between">
