@@ -57,7 +57,6 @@
 		});
 		upload.onComplete((uploadId) => {
 			files = [];
-			password = '';
 			completeUpload(uploadId);
 		});
 		upload.onError(() => {

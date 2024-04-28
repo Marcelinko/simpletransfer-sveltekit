@@ -8,7 +8,9 @@
 	import QRCode from 'qrcode';
 	import { toast } from 'svelte-sonner';
 	import { env } from '$env/dynamic/public';
+	import { onDestroy } from 'svelte';
 
+	export let password: string;
 	const appState = getAppState();
 	let loading = false;
 	let QRImg = '';
@@ -32,8 +34,12 @@
 
 	function viewTransfer() {
 		loading = true;
-		goto(`/transfer/${$appState.uploadId}`);
+		goto(`/transfer/${$appState.uploadId}`, { state: { password } });
 	}
+
+	onDestroy(() => {
+		password = '';
+	});
 </script>
 
 <Card.Root class="flex h-full flex-col">

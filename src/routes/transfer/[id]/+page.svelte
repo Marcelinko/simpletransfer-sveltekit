@@ -8,7 +8,8 @@
 	import ImagePreview from '../../ImagePreview.svelte';
 	import { getAppState } from '$lib/state.svelte';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
+	import { afterUpdate, onMount } from 'svelte';
+	import { page } from '$app/stores';
 	export let data: PageData;
 	const appState = getAppState();
 
@@ -61,7 +62,7 @@
 		return file.type.startsWith('image/');
 	}
 
-	async function unlockTransfer() {
+	async function unlockTransfer(password: string) {
 		loading = true;
 		const res = await fetch('/api/transfer/files', {
 			method: 'POST',
@@ -123,6 +124,12 @@
 		);
 		zipDownloaded = true;
 	}
+
+	afterUpdate(() => {
+		if (locked && $page.state.password) {
+			unlockTransfer($page.state.password);
+		}
+	});
 </script>
 
 <main class="flex h-dvh items-center justify-center">
@@ -155,7 +162,9 @@
 					{#if loading}
 						<Button disabled>Loading<Loader class="ml-2 h-4 w-4 animate-spin" /></Button>
 					{:else}
-						<Button on:click={unlockTransfer}>Unlock<KeyRound class="ml-2 h-4 w-4" /></Button>
+						<Button on:click={() => unlockTransfer(password)}
+							>Unlock<KeyRound class="ml-2 h-4 w-4" /></Button
+						>
 					{/if}
 				</Card.Footer>
 			</Card.Root>

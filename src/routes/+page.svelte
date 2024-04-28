@@ -56,7 +56,7 @@
 			out:fade={{ duration: 300 }}
 			class="absolute h-full w-full max-w-[700px] md:max-h-[500px]"
 		>
-			<TransferSummary />
+			<TransferSummary bind:password />
 		</div>
 	{/if}
 </main>
