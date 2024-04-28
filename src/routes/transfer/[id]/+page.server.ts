@@ -40,12 +40,13 @@ export const load = async ({ params }) => {
 	}
 
 	const downloadUrlPromises = fileData.map((file) => {
+		const encodedFilename = encodeURIComponent(file.name);
 		return getSignedUrl(
 			s3,
 			new GetObjectCommand({
 				Bucket: 'simpletransfer',
 				Key: file.key,
-				ResponseContentDisposition: `attachment; filename=${file.name}`
+				ResponseContentDisposition: `attachment; filename=${encodedFilename}`
 			}),
 			{
 				expiresIn: (uploadExpiry.getTime() - Date.now()) / 1000
