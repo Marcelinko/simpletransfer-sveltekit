@@ -2,7 +2,6 @@
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
-	import { Label } from '$lib/components/ui/label/index.js';
 	import type { PageData } from './$types';
 	import { Download, RotateCw, Eye, KeyRound, Loader, LockKeyhole, X } from 'lucide-svelte';
 	import { fade } from 'svelte/transition';
@@ -36,8 +35,10 @@
 
 	onMount(async () => {
 		downloadZip = (await import('client-zip')).downloadZip;
-		streamSaver = await import('streamsaver');
-		streamSaver.mitm = 'https://simpletransfer.github.io/StreamSaver.js/mitm.html';
+		streamSaver = (await import('streamsaver')).default;
+		if (streamSaver) {
+			streamSaver.mitm = 'https://simpletransfer.github.io/StreamSaver.js/mitm.html';
+		}
 	});
 
 	function newTransfer() {

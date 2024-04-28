@@ -7,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>SimpleTransfer - Effortlessly Send Large Files for Free - Up to 1GB, No cost</title>
+	<title>SimpleTransfer - Effortlessly Send Large Files for Free - Up to 1GB</title>
 	<meta
 		content="Send large files effortlessly with SimpleTransfer. Enjoy up to 1GB file transfers for free, with no hidden costs. Preview photos and more!"
 		name="description"
