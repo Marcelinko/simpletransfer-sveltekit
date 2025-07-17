@@ -30,7 +30,7 @@
 		property="twitter:description"
 	/>
 	<meta content="#000" name="theme-color" />
-	<meta name="google-site-verification" content="bmCqEtO6mqJAoUB0xnVsSoxcEeiYCnV9V0HnfQ9agLc" />
+	<meta name="google-site-verification" content="cJtRtCfJB1AP7Nb-sdj3HdLSbeeGfZPVgS1iq8HBLI0" />
 </svelte:head>
 
 <Toaster />
